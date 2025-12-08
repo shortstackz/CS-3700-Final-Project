@@ -1,30 +1,89 @@
+version: '3.8'
+
 services:
   redis:
-    image: redis:latest
-    container_name: redis
+    image: redis:7-alpine
+    container_name: wordaround_redis
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
-  servera:
+  server_a:
     build: ./backend
-    image: cs3700-servera
-    container_name: server_a
+    container_name: wordaround_server_a
     environment:
-      - SERVER_NAME=serverA
+      - SERVER_NAME=Server-A
       - REDIS_HOST=redis
     ports:
       - "5000:5000"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  serverb:
+  server_b:
     build: ./backend
-    image: cs3700-serverb
-    container_name: server_b
+    container_name: wordaround_server_b
     environment:
-      - SERVER_NAME=serverB
+      - SERVER_NAME=Server-B
       - REDIS_HOST=redis
     ports:
       - "5001:5000"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  server_c:
+    build: ./backend
+    container_name: wordaround_server_c
+    environment:
+      - SERVER_NAME=Server-C
+      - REDIS_HOST=redis
+    ports:
+      - "5002:5000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    image: nginx:alpine
+    container_name: wordaround_frontend
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - server_a
+      - server_b
+      - server_c
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: wordaround_network
