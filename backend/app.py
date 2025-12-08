@@ -1,6 +1,6 @@
 import os
 from flask import Flask, request
-from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_socketio import SocketIO, emit
 import redis
 import threading
 import json
@@ -139,4 +139,4 @@ def get_all_users():
     return list(user_dict.values())
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000)
