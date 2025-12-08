@@ -3,7 +3,7 @@ monkey.patch_all()
 
 import os
 from flask import Flask, request
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import redis
 import threading
 import json
@@ -16,7 +16,12 @@ REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 REDIS_PORT = 6379
 SERVER_NAME = os.getenv("SERVER_NAME", "ServerA")
 
-socketio = SocketIO(app, cors_allowed_origins="*", message_queue=f"redis://{REDIS_HOST}:{REDIS_PORT}")
+socketio = SocketIO(
+    app, 
+    cors_allowed_origins="*", 
+    message_queue=f"redis://{REDIS_HOST}:{REDIS_PORT}",
+    async_mode='gevent'
+)
 
 # Redis connections
 r = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
@@ -86,11 +91,15 @@ def handle_join(data):
     username = data.get("username", "Anonymous")
     connected_users[request.sid] = username
     
+    print(f"User {username} (session: {request.sid}) joined on {SERVER_NAME}")
+    
     # Store user in Redis (shared across all servers)
     r.hset("users", request.sid, username)
     
     # Get updated user list
     users = get_all_users()
+    
+    print(f"Current user list: {users}")
     
     # Publish user join event
     r.publish("users", json.dumps({
@@ -114,7 +123,8 @@ def handle_join(data):
 @socketio.on("send_message")
 def handle_message(data):
     """Handle incoming chat messages"""
-    username = connected_users.get(request.sid, "Anonymous")
+    # Try to get username from the message data first, then fall back to connected_users
+    username = data.get("username") or connected_users.get(request.sid, "Anonymous")
     
     message_data = {
         "username": username,
@@ -123,6 +133,8 @@ def handle_message(data):
         "server": SERVER_NAME,
         "type": "user"
     }
+    
+    print(f"Processing message from {username}: {message_data['message']}")
     
     # Publish to Redis (all servers will receive this)
     r.publish("chat", json.dumps(message_data))
