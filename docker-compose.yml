@@ -1,0 +1,30 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  servera:
+    build: ./backend
+    image: cs3700-servera
+    container_name: server_a
+    environment:
+      - SERVER_NAME=serverA
+      - REDIS_HOST=redis
+    ports:
+      - "5000:5000"
+    depends_on:
+      - redis
+
+  serverb:
+    build: ./backend
+    image: cs3700-serverb
+    container_name: server_b
+    environment:
+      - SERVER_NAME=serverB
+      - REDIS_HOST=redis
+    ports:
+      - "5001:5000"
+    depends_on:
+      - redis

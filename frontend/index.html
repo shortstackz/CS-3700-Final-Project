@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>WordAround Chat</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+    <div id="app">
+
+        <!-- Header -->
+        <header>
+            <h1>WordAround</h1>
+            <div class="server-indicator" id="serverStatus">Connecting…</div>
+        </header>
+
+        <!-- Main Chat Layout -->
+        <div class="chat-container">
+
+            <!-- Sidebar: Users (optional placeholder for now) -->
+            <aside class="sidebar">
+                <h3>Online Users</h3>
+                <ul id="userList">
+                    <!-- Filled dynamically -->
+                </ul>
+            </aside>
+
+            <!-- Messages Panel -->
+            <section class="messages" id="messages">
+                <!-- Messages will append here -->
+                <div class="placeholder">No messages yet…</div>
+            </section>
+        </div>
+
+        <!-- Input Area -->
+        <footer>
+            <input 
+                id="msgInput" 
+                type="text" 
+                placeholder="Type your message…" 
+                autocomplete="off"
+            />
+            <button id="sendBtn">Send</button>
+        </footer>
+
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
