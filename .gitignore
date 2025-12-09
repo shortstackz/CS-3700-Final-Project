@@ -1,0 +1,17 @@
+touch .gitignore
+```
+
+Add this to `.gitignore`:
+```
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+
+# System
+.DS_Store

@@ -3,9 +3,8 @@ monkey.patch_all()
 
 import os
 from flask import Flask, request
-from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_socketio import SocketIO, emit
 import redis
-import threading
 import json
 from datetime import datetime
 
@@ -16,6 +15,7 @@ REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 REDIS_PORT = 6379
 SERVER_NAME = os.getenv("SERVER_NAME", "ServerA")
 
+# SocketIO with Redis message queue handles message distribution automatically
 socketio = SocketIO(
     app, 
     cors_allowed_origins="*", 
@@ -23,28 +23,11 @@ socketio = SocketIO(
     async_mode='gevent'
 )
 
-# Redis connections
+# Redis connection for data storage only (not pub/sub)
 r = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
-pubsub = r.pubsub()
-pubsub.subscribe("chat", "users")
 
 # Local tracking
 connected_users = {}  # {session_id: username}
-
-def listen_to_redis():
-    """Background thread to listen for Redis pub/sub messages"""
-    for msg in pubsub.listen():
-        if msg["type"] == "message":
-            data = json.loads(msg["data"])
-            
-            if msg["channel"] == "chat":
-                # Broadcast chat messages to all connected clients
-                socketio.emit("message", data)
-            elif msg["channel"] == "users":
-                # Broadcast user list updates
-                socketio.emit("user_list", data)
-
-threading.Thread(target=listen_to_redis, daemon=True).start()
 
 @app.route("/")
 def home():
@@ -81,7 +64,21 @@ def handle_disconnect():
         
         # Broadcast updated user list
         users = get_all_users()
-        r.publish("users", json.dumps({"users": users, "action": "leave", "username": username}))
+        socketio.emit("user_list", {
+            "users": users, 
+            "action": "leave", 
+            "username": username
+        })
+        
+        # Send system message
+        system_msg = {
+            "username": "System",
+            "message": f"{username} left the chat",
+            "timestamp": datetime.now().isoformat(),
+            "server": SERVER_NAME,
+            "type": "system"
+        }
+        socketio.emit("message", system_msg)
         
         print(f"User {username} disconnected from {SERVER_NAME}")
 
@@ -101,12 +98,12 @@ def handle_join(data):
     
     print(f"Current user list: {users}")
     
-    # Publish user join event
-    r.publish("users", json.dumps({
+    # Broadcast user list update
+    socketio.emit("user_list", {
         "users": users,
         "action": "join",
         "username": username
-    }))
+    })
     
     # Send system message
     system_msg = {
@@ -116,9 +113,7 @@ def handle_join(data):
         "server": SERVER_NAME,
         "type": "system"
     }
-    r.publish("chat", json.dumps(system_msg))
-    
-    print(f"User {username} joined on {SERVER_NAME}")
+    socketio.emit("message", system_msg)
 
 @socketio.on("send_message")
 def handle_message(data):
@@ -136,12 +131,12 @@ def handle_message(data):
     
     print(f"Processing message from {username}: {message_data['message']}")
     
-    # Publish to Redis (all servers will receive this)
-    r.publish("chat", json.dumps(message_data))
-    
-    # Store in message history (keep last 100 messages)
+    # Store in message history
     r.lpush("message_history", json.dumps(message_data))
     r.ltrim("message_history", 0, 99)
+    
+    # Broadcast to all clients (Redis message_queue handles distribution)
+    socketio.emit("message", message_data)
 
 def get_message_history(limit=50):
     """Retrieve message history from Redis"""
