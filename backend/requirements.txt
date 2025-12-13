@@ -4,3 +4,4 @@ python-socketio
 redis
 gevent
 gevent-websocket
+requests

@@ -2,11 +2,13 @@ from gevent import monkey
 monkey.patch_all()
 
 import os
-from flask import Flask, request
+import time
+from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
 import redis
 import json
 from datetime import datetime
+from server_sync import ServerSync  # Import sync module
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "secret"
@@ -15,7 +17,10 @@ REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 REDIS_PORT = 6379
 SERVER_NAME = os.getenv("SERVER_NAME", "ServerA")
 
-# SocketIO with Redis message queue handles message distribution automatically
+# Get other server URLs from environment
+OTHER_SERVERS = os.getenv("OTHER_SERVERS", "").split(",")
+OTHER_SERVERS = [s.strip() for s in OTHER_SERVERS if s.strip()]
+
 socketio = SocketIO(
     app, 
     cors_allowed_origins="*", 
@@ -23,11 +28,19 @@ socketio = SocketIO(
     async_mode='gevent'
 )
 
-# Redis connection for data storage only (not pub/sub)
+
 r = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
-# Local tracking
-connected_users = {}  # {session_id: username}
+# Initialize server synchronization
+if OTHER_SERVERS:
+    sync_manager = ServerSync(SERVER_NAME, OTHER_SERVERS)
+    sync_manager.start_periodic_sync()
+    print(f"Server sync enabled with: {OTHER_SERVERS}")
+else:
+    sync_manager = None
+    print("No other servers configured for sync")
+
+connected_users = {}
 
 @app.route("/")
 def home():
@@ -35,20 +48,66 @@ def home():
 
 @app.route("/health")
 def health():
-    """Health check endpoint for monitoring"""
-    return {"status": "healthy", "server": SERVER_NAME, "users": len(connected_users)}
+    """Health check endpoint"""
+    return {
+        "status": "healthy", 
+        "server": SERVER_NAME, 
+        "users": len(connected_users)
+    }
 
+# NEW: REST API for server-to-server sync
+@app.route("/api/sync", methods=["GET"])
+def sync_endpoint():
+    """Endpoint for other servers to request sync data"""
+    requesting_server = request.args.get("requesting_server", "unknown")
+    print(f"Sync request from {requesting_server}")
+    
+    try:
+        message_count = r.llen("message_history")
+        user_list = get_all_users()
+        
+        return jsonify({
+            "server": SERVER_NAME,
+            "timestamp": time.time(),
+            "users": len(user_list),
+            "user_list": user_list,
+            "messages": message_count,
+            "status": "healthy"
+        })
+    except Exception as e:
+        return jsonify({
+            "server": SERVER_NAME,
+            "status": "error",
+            "error": str(e)
+        }), 500
+
+@app.route("/api/event", methods=["POST"])
+def event_endpoint():
+    """Receive event notifications from other servers"""
+    data = request.json
+    source = data.get("source_server")
+    event_type = data.get("event_type")
+    event_data = data.get("data")
+    
+    print(f"Received {event_type} event from {source}: {event_data}")
+    
+    # You can add custom logic here to handle events
+    # For now, just log them
+    
+    return jsonify({"status": "received"})
+
+# Rest of your existing code...
 @socketio.on("connect")
 def handle_connect():
     """Handle new client connections"""
     print(f"Client connected: {request.sid} on {SERVER_NAME}")
     emit("server_info", {"server": SERVER_NAME, "sid": request.sid})
-    
-    # Send message history to new client
+
+
     history = get_message_history()
     emit("message_history", history)
     
-    # Send current user list
+
     users = get_all_users()
     emit("user_list", {"users": users})
 
@@ -58,11 +117,14 @@ def handle_disconnect():
     if request.sid in connected_users:
         username = connected_users[request.sid]
         del connected_users[request.sid]
-        
-        # Update Redis user list
+
+
         r.hdel("users", request.sid)
         
-        # Broadcast updated user list
+        # Notify peer servers
+        if sync_manager:
+            sync_manager.notify_peers("user_leave", {"username": username})
+        
         users = get_all_users()
         socketio.emit("user_list", {
             "users": users, 
@@ -70,11 +132,11 @@ def handle_disconnect():
             "username": username
         })
         
-        # Send system message
+
         system_msg = {
             "username": "System",
             "message": f"{username} left the chat",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": time.time(),
             "server": SERVER_NAME,
             "type": "system"
         }
@@ -90,26 +152,27 @@ def handle_join(data):
     
     print(f"User {username} (session: {request.sid}) joined on {SERVER_NAME}")
     
-    # Store user in Redis (shared across all servers)
+
     r.hset("users", request.sid, username)
     
-    # Get updated user list
+    # Notify peer servers
+    if sync_manager:
+        sync_manager.notify_peers("user_join", {"username": username})
+    
     users = get_all_users()
-    
-    print(f"Current user list: {users}")
-    
-    # Broadcast user list update
+
+  
     socketio.emit("user_list", {
         "users": users,
         "action": "join",
         "username": username
     })
     
-    # Send system message
+
     system_msg = {
         "username": "System",
         "message": f"{username} joined the chat",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": time.time(),
         "server": SERVER_NAME,
         "type": "system"
     }
@@ -118,24 +181,24 @@ def handle_join(data):
 @socketio.on("send_message")
 def handle_message(data):
     """Handle incoming chat messages"""
-    # Try to get username from the message data first, then fall back to connected_users
+    
     username = data.get("username") or connected_users.get(request.sid, "Anonymous")
     
     message_data = {
         "username": username,
         "message": data.get("message", ""),
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": time.time(),
         "server": SERVER_NAME,
         "type": "user"
     }
     
     print(f"Processing message from {username}: {message_data['message']}")
     
-    # Store in message history
+
     r.lpush("message_history", json.dumps(message_data))
     r.ltrim("message_history", 0, 99)
     
-    # Broadcast to all clients (Redis message_queue handles distribution)
+
     socketio.emit("message", message_data)
 
 def get_message_history(limit=50):

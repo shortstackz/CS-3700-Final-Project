@@ -6,31 +6,22 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    command: redis-server --appendonly yes --appendfsync everysec
+
+  server_a:
+    build: ./backend
+    container_name: wordaround_server_a
+    environment:
+      - SERVER_NAME=Server-A
+      - REDIS_HOST=redis
+      - OTHER_SERVERS=http://server_b:5000,http://server_c:5000
+    ports:
+      - "5000:5000"
+    depends_on:
+      - redis
+    restart: unless-stopped
 
 
-server_a:
-  build: ./backend
-  container_name: wordaround_server_a
-  environment:
-    - SERVER_NAME=Server-A
-    - REDIS_HOST=redis
-  ports:
-    - "5000:5000"
-  volumes:
-    - server_a_data:/app/data  # Persist database
-  depends_on:
-    - redis
-  restart: unless-stopped
-
-volumes:
-  redis_data:
-    driver: local
-  server_a_data:
-    driver: local
-  server_b_data:
-    driver: local
-  server_c_data:
-    driver: local
 
   server_b:
     build: ./backend
@@ -38,6 +29,7 @@ volumes:
     environment:
       - SERVER_NAME=Server-B
       - REDIS_HOST=redis
+      - OTHER_SERVERS=http://server_a:5000,http://server_c:5000
     ports:
       - "5001:5000"
     depends_on:
@@ -51,6 +43,7 @@ volumes:
     environment:
       - SERVER_NAME=Server-C
       - REDIS_HOST=redis
+      - OTHER_SERVERS=http://server_a:5000,http://server_b:5000
     ports:
       - "5002:5000"
     depends_on:
@@ -73,7 +66,4 @@ volumes:
 volumes:
   redis_data:
     driver: local
-
-networks:
-  default:
-    name: wordaround_network
+    
