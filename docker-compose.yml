@@ -8,18 +8,29 @@ services:
       - redis_data:/data
 
 
-  server_a:
-    build: ./backend
-    container_name: wordaround_server_a
-    environment:
-      - SERVER_NAME=Server-A
-      - REDIS_HOST=redis
-    ports:
-      - "5000:5000"
-    depends_on:
-      - redis
-    restart: unless-stopped
+server_a:
+  build: ./backend
+  container_name: wordaround_server_a
+  environment:
+    - SERVER_NAME=Server-A
+    - REDIS_HOST=redis
+  ports:
+    - "5000:5000"
+  volumes:
+    - server_a_data:/app/data  # Persist database
+  depends_on:
+    - redis
+  restart: unless-stopped
 
+volumes:
+  redis_data:
+    driver: local
+  server_a_data:
+    driver: local
+  server_b_data:
+    driver: local
+  server_c_data:
+    driver: local
 
   server_b:
     build: ./backend
