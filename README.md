@@ -39,7 +39,7 @@ This project aims to **design and implement a distributed chat system** that sup
 
 ---
 ## Core Components
-**
+
 - Flask + Socket.IO: Handles HTTP endpoints and real-time WebSocket communication
 - Redis:
 - Message queue for Socket.IO event propagation
@@ -49,7 +49,7 @@ This project aims to **design and implement a distributed chat system** that sup
 - Best-effort event notifications between servers
 - Docker Compose:
 - Orchestrates Redis and multiple backend server containers
-**
+
 
 ---
 
@@ -76,7 +76,7 @@ The WordAround system consists of:
 ---
 ## Simple Diagram
 
-** Clients
+**Clients**
 - │
 - ▼
 - Flask-SocketIO Servers (A, B, C, ...)
@@ -87,11 +87,11 @@ Redis
 
 ---
 
-##System Overview -Continued
-*Chat Server (backend/app.py)
+## System Overview -Continued
+- Chat Server (backend/app.py)
 Each server instance is identical and differentiated only by environment variables.
 
-Responsibilities:
+**Responsibilities:**
 
 - Manage client WebSocket connections
 - Broadcast chat messages
@@ -100,15 +100,15 @@ Responsibilities:
 - Expose REST endpoints for server-to-server coordination
 
 ## WebSocket Events
-- Event	    |     Direction	 |    Description
-- connect	      Client → Server	Client establishes connection
-- join	         Client → Server	User joins chat
-- send_message   Client → Server	Broadcast chat message
-- disconnect	   Client → Server	Cleanup on disconnect
-- message	      Server → Client	Chat message broadcast
-- user_list	   Server → Client	Updated list of active users
-- message_history   Server → Client	Recent message history
-- server_info	   Server → Client	Server identity and session info
+- **Event**	    |     **Direction**	 |    **Description**
+- **connect**	      Client → Server	Client establishes connection
+- **join**	         Client → Server	User joins chat
+- **send_message**   Client → Server	Broadcast chat message
+- **disconnect**	   Client → Server	Cleanup on disconnect
+- **message**	      Server → Client	Chat message broadcast
+- **user_list**	   Server → Client	Updated list of active users
+- **message_history**   Server → Client	Recent message history
+- **server_info**	   Server → Client	Server identity and session info
 
 
 
@@ -139,7 +139,7 @@ Responsibilities:
    - No message persistence beyond Redis lifetime
    - No conflict resolution for concurrent events
    - No dynamic peer discovery
-** Potential extensions:
+**Potential extensions:**
    - JWT-based authentication
    - Persistent storage backend
    - Leader election or consensus
