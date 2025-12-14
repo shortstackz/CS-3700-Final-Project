@@ -12,6 +12,10 @@
 
 Traditional centralized chat systems often suffer from bottlenecks or single points of failure. WordAround addresses this by distributing the messaging workload across multiple servers, ensuring reliability and consistent message delivery even if one server goes offline.
 
+Each server instance:
+Accepts WebSocket connections from clients
+Shares messages and events via Redis
+Periodically synchronizes health and state with peer servers
 ---
 
 ## Problem Statement
@@ -32,6 +36,20 @@ This project aims to **design and implement a distributed chat system** that sup
 - Demonstrate **concurrency handling** for messages across multiple nodes  
 - Build a **user-friendly interface** to visualize real-time message synchronization  
 - Deliver a working prototype by the end of the semester, with potential for portfolio expansion  
+
+---
+## Core Components
+**
+-Flask + Socket.IO: Handles HTTP endpoints and real-time WebSocket communication
+-Redis:
+-Message queue for Socket.IO event propagation
+-Shared storage for users and message history
+-ServerSync module:
+-Periodic peer-to-peer health synchronization
+-Best-effort event notifications between servers
+-Docker Compose:
+-Orchestrates Redis and multiple backend server containers
+**
 
 ---
 
@@ -56,6 +74,44 @@ The WordAround system consists of:
    - The combination of WebSocket communication and containerized nodes provides a realistic distributed system framework  
 
 ---
+## Simple Diagram
+
+** Clients
+│
+▼
+Flask-SocketIO Servers (A, B, C, ...)
+│ │ │
+└────────┴────────┘
+Redis
+(shared state + message queue)
+
+---
+
+##System Overview -Continued
+*Chat Server (backend/app.py)
+Each server instance is identical and differentiated only by environment variables.
+
+Responsibilities:
+-Manage client WebSocket connections
+-Broadcast chat messages
+-Maintain a shared user list
+-Persist recent message history
+-Expose REST endpoints for server-to-server coordination
+
+WebSocket Events
+Event	    |     Direction	 |    Description
+connect	      Client → Server	Client establishes connection
+join	         Client → Server	User joins chat
+send_message   Client → Server	Broadcast chat message
+disconnect	   Client → Server	Cleanup on disconnect
+message	      Server → Client	Chat message broadcast
+user_list	   Server → Client	Updated list of active users
+message_history   Server → Client	Recent message history
+server_info	   Server → Client	Server identity and session info
+
+
+
+---
 
 ## Technologies & Tools
 - **Language:** Python  
@@ -73,4 +129,20 @@ The WordAround system consists of:
 - **Server synchronization:** all chat rooms remain consistent across multiple nodes  
 - A **simple, intuitive interface** for user interaction  
 - **WebSocket-based communication** for real-time message delivery and server synchronization  
-- Comparable functionality to popular messaging apps (on a smaller scale)  
+- Comparable functionality to popular messaging apps (on a smaller scale)
+   
+---
+
+## Limitations & Future Work
+   -No authentication or authorization
+   -No message persistence beyond Redis lifetime
+   -No conflict resolution for concurrent events
+   -No dynamic peer discovery
+** Potential extensions:
+   -JWT-based authentication
+   -Persistent storage backend
+   -Leader election or consensus
+   -Metrics and tracing integration
+--- 
+## Status 
+This backend is production-structured but experimental in guarantees. It is well-suited for coursework, prototypes, and systems demonstrations involving distributed real-time communication.
