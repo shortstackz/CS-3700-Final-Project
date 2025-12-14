@@ -40,15 +40,15 @@ This project aims to **design and implement a distributed chat system** that sup
 ---
 ## Core Components
 **
--Flask + Socket.IO: Handles HTTP endpoints and real-time WebSocket communication
--Redis:
--Message queue for Socket.IO event propagation
--Shared storage for users and message history
--ServerSync module:
--Periodic peer-to-peer health synchronization
--Best-effort event notifications between servers
--Docker Compose:
--Orchestrates Redis and multiple backend server containers
+- Flask + Socket.IO: Handles HTTP endpoints and real-time WebSocket communication
+- Redis:
+- Message queue for Socket.IO event propagation
+- Shared storage for users and message history
+- ServerSync module:
+- Periodic peer-to-peer health synchronization
+- Best-effort event notifications between servers
+- Docker Compose:
+- Orchestrates Redis and multiple backend server containers
 **
 
 ---
