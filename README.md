@@ -77,11 +77,11 @@ The WordAround system consists of:
 ## Simple Diagram
 
 ** Clients
-│
-▼
-Flask-SocketIO Servers (A, B, C, ...)
-│ │ │
-└────────┴────────┘
+- │
+- ▼
+- Flask-SocketIO Servers (A, B, C, ...)
+- │ │ │
+- └────────┴────────┘
 Redis
 (shared state + message queue)
 
@@ -92,22 +92,23 @@ Redis
 Each server instance is identical and differentiated only by environment variables.
 
 Responsibilities:
--Manage client WebSocket connections
--Broadcast chat messages
--Maintain a shared user list
--Persist recent message history
--Expose REST endpoints for server-to-server coordination
 
-WebSocket Events
-Event	    |     Direction	 |    Description
-connect	      Client → Server	Client establishes connection
-join	         Client → Server	User joins chat
-send_message   Client → Server	Broadcast chat message
-disconnect	   Client → Server	Cleanup on disconnect
-message	      Server → Client	Chat message broadcast
-user_list	   Server → Client	Updated list of active users
-message_history   Server → Client	Recent message history
-server_info	   Server → Client	Server identity and session info
+- Manage client WebSocket connections
+- Broadcast chat messages
+- Maintain a shared user list
+- Persist recent message history
+- Expose REST endpoints for server-to-server coordination
+
+## WebSocket Events
+- Event	    |     Direction	 |    Description
+- connect	      Client → Server	Client establishes connection
+- join	         Client → Server	User joins chat
+- send_message   Client → Server	Broadcast chat message
+- disconnect	   Client → Server	Cleanup on disconnect
+- message	      Server → Client	Chat message broadcast
+- user_list	   Server → Client	Updated list of active users
+- message_history   Server → Client	Recent message history
+- server_info	   Server → Client	Server identity and session info
 
 
 
@@ -134,15 +135,15 @@ server_info	   Server → Client	Server identity and session info
 ---
 
 ## Limitations & Future Work
-   -No authentication or authorization
-   -No message persistence beyond Redis lifetime
-   -No conflict resolution for concurrent events
-   -No dynamic peer discovery
+   - No authentication or authorization
+   - No message persistence beyond Redis lifetime
+   - No conflict resolution for concurrent events
+   - No dynamic peer discovery
 ** Potential extensions:
-   -JWT-based authentication
-   -Persistent storage backend
-   -Leader election or consensus
-   -Metrics and tracing integration
+   - JWT-based authentication
+   - Persistent storage backend
+   - Leader election or consensus
+   - Metrics and tracing integration
 --- 
 ## Status 
 This backend is production-structured but experimental in guarantees. It is well-suited for coursework, prototypes, and systems demonstrations involving distributed real-time communication.
