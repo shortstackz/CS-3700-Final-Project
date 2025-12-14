@@ -139,7 +139,7 @@ Each server instance is identical and differentiated only by environment variabl
    - No message persistence beyond Redis lifetime
    - No conflict resolution for concurrent events
    - No dynamic peer discovery
-**Potential extensions:**
+- **Potential extensions:**
    - JWT-based authentication
    - Persistent storage backend
    - Leader election or consensus
