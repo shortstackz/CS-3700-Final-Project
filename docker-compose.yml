@@ -1,20 +1,24 @@
 services:
+# Redis service
+  # Acts as both:
+  # 1) Socket.IO message queue for cross-server event propagation
+  # 2) Shared in-memory datastore for users and message history
   redis:
     image: redis:7-alpine
     container_name: wordaround_redis
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - redis_data:/data # Persist Redis data to local volume
     command: redis-server --appendonly yes --appendfsync everysec
-
+# Backend chat server - Instance A
   server_a:
     build: ./backend
     container_name: wordaround_server_a
-    environment:
+    environment: # Build Flask-SocketIO backend image
       - SERVER_NAME=Server-A
       - REDIS_HOST=redis
-      - OTHER_SERVERS=http://server_b:5000,http://server_c:5000
+      - OTHER_SERVERS=http://server_b:5000,http://server_c:5000   # Peer servers for health sync and event notifications
     ports:
       - "5000:5000"
     depends_on:
@@ -22,7 +26,7 @@ services:
     restart: unless-stopped
 
 
-
+# Backend chat server - Instance B
   server_b:
     build: ./backend
     container_name: wordaround_server_b
@@ -31,12 +35,12 @@ services:
       - REDIS_HOST=redis
       - OTHER_SERVERS=http://server_a:5000,http://server_c:5000
     ports:
-      - "5001:5000"
+      - "5001:5000" # Map container port 5000 to host 5001
     depends_on:
       - redis
     restart: unless-stopped
 
-
+# Backend chat server - Instance C
   server_c:
     build: ./backend
     container_name: wordaround_server_c
@@ -50,7 +54,8 @@ services:
       - redis
     restart: unless-stopped
 
-
+# Frontend service
+  # Serves static frontend assets via Nginx
   frontend:
     image: nginx:alpine
     container_name: wordaround_frontend
@@ -62,7 +67,7 @@ services:
       - server_a
       - server_b
       - server_c
-
+# Persistent volumes
 volumes:
   redis_data:
     driver: local
